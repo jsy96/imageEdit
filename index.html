@@ -315,6 +315,26 @@
             pointer-events: none;
             z-index: 5;
         }
+
+        .control-buttons-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            pointer-events: auto;
+        }
+
+        .scale-badge-horizontal {
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            min-width: 50px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -635,22 +655,23 @@
                 const scaleValue = hasImage ? (imgData.scale * 100).toFixed(0) + '%' : '-';
 
                 controlGroup.innerHTML = `
-                    <div class="scale-badge">${scaleValue}</div>
                     ${isSelected && hasImage ? `
-                    <div class="control-buttons">
-                        <button class="control-btn direction-btn" data-index="${index}" data-action="move-up" title="上移">↑</button>
+                    <div class="control-buttons-vertical">
+                        <div class="control-row center-row">
+                            <button class="control-btn" data-index="${index}" data-action="zoom-out" title="缩小">-</button>
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-up" title="上移">↑</button>
+                            <button class="control-btn" data-index="${index}" data-action="zoom-in" title="放大">+</button>
                         </div>
                         <div class="control-row center-row">
                             <button class="control-btn direction-btn" data-index="${index}" data-action="move-left" title="左移">←</button>
-                            <button class="control-btn" data-index="${index}" data-action="zoom-out" title="缩小">-</button>
-                            <button class="control-btn reset-btn" data-index="${index}" data-action="reset" title="复原">复原</button>
-                            <button class="control-btn" data-index="${index}" data-action="zoom-in" title="放大">+</button>
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-down" title="下移">↓</button>
                             <button class="control-btn direction-btn" data-index="${index}" data-action="move-right" title="右移">→</button>
                         </div>
-                        <div class="control-row">
-                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-down" title="下移">↓</button>
+                        <div class="control-row center-row">
+                            <button class="control-btn reset-btn" data-index="${index}" data-action="reset" title="复原">复原</button>
+                            <span class="scale-badge-horizontal">${scaleValue}</span>
+                            <button class="control-btn delete-btn" data-index="${index}" data-action="delete" title="删除">🗑</button>
                         </div>
-                        <div class="control-row"><button class="control-btn delete-btn" data-index="${index}" data-action="delete" title="删除">🗑</button></div>
                     </div>
                     ` : ''}
                 `;
