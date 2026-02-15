@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像编辑工具 - A4合成</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #764ba2;
+            background: #e8e9ff;
+            transform: scale(1.02);
+        }
+
+        .upload-info {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .upload-count {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        /* A4预览区域 */
+        .a4-preview-container {
+            position: relative;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .a4-preview-container.show {
+            display: block;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .preview-title {
+            font-size: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            overflow-x: auto;
+            cursor: pointer;
+        }
+
+        #previewCanvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        /* 控制按钮容器 */
+        .controls-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .control-group {
+            position: absolute;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+
+        .control-group:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 200px;
+            backdrop-filter: blur(2px);
+        }
+
+        .control-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-weight: bold;
+        }
+
+        .control-btn:hover {
+            background: rgba(102, 126, 234, 0.8);
+            color: white;
+            transform: scale(1.15);
+            text-shadow: none;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn.reset-btn {
+            width: auto;
+            min-width: 40px;
+            padding: 0 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .control-btn.delete-btn {
+            background: rgba(231, 76, 60, 0.5);
+            color: white;
+        }
+
+        .control-btn.delete-btn:hover {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .control-btn.direction-btn {
+            font-size: 14px;
+        }
+
+        .scale-badge {
+            background: rgba(102, 126, 234, 0.4);
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .control-row.center-row {
+            align-items: center;
+        }
+
+        .circle-indicator {
+            position: absolute;
+            border: 3px dashed #667eea;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* 隐藏的高分辨率canvas用于下载 */
+        #outputCanvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ 图像编辑工具 - A4合成打印</h1>
+
+        <!-- 头部区域 -->
+        <div class="header-section">
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-info">点击或拖拽上传11张图片</div>
+                <div class="upload-count">已上传: <span id="uploadCount">0</span>/11</div>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="clearBtn">清空</button>
+                <button class="btn btn-primary" id="downloadBtn" disabled>📥 下载A4图像</button>
+            </div>
+        </div>
+
+        <!-- A4预览区域 -->
+        <div class="a4-preview-container" id="a4PreviewContainer">
+            <div class="preview-header">
+                <div class="preview-title">A4打印预览 (300dpi) - 点击圆形选中图片进行编辑</div>
+                <div class="upload-count">图片: <span id="previewCount">0</span>/11</div>
+            </div>
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="previewCanvas"></canvas>
+                <div class="controls-overlay" id="controlsOverlay"></div>
+            </div>
+        </div>
+
+        <!-- 隐藏的输出canvas -->
+        <canvas id="outputCanvas"></canvas>
+    </div>
+
+    <script>
+        // A4纸尺寸配置 (300dpi)
+        const A4_CONFIG = {
+            widthMM: 210,
+            heightMM: 297,
+            dpi: 300,
+            get pixelsPerMM() {
+                return this.dpi / 25.4;
+            },
+            get width() {
+                return Math.round(this.widthMM * this.pixelsPerMM);
+            },
+            get height() {
+                return Math.round(this.heightMM * this.pixelsPerMM);
+            },
+            get centerX() {
+                return this.width / 2;
+            },
+            get centerY() {
+                return this.height / 2;
+            }
+        };
+
+        // 小图像配置
+        const IMAGE_CONFIG = {
+            diameterMM: 70,
+            get diameterPx() {
+                return Math.round(this.diameterMM * A4_CONFIG.pixelsPerMM);
+            },
+            get radius() {
+                return this.diameterPx / 2;
+            }
+        };
+
+        // 11个圆心位置 (单位: mm)
+        const POSITIONS_MM = [
+            { x: 68, y: -111 },
+            { x: 68, y: -37 },
+            { x: 68, y: 111 },
+            { x: 68, y: 37 },
+            { x: -68, y: -111 },
+            { x: -68, y: -37 },
+            { x: -68, y: 111 },
+            { x: -68, y: 37 },
+            { x: 0, y: 0 },
+            { x: 0, y: -74 },
+            { x: 0, y: 74 }
+        ];
+
+        // 预览显示配置（缩小显示以提高性能）
+        const PREVIEW_SCALE = 0.25;
+
+        // 将mm坐标转换为像素坐标
+        function mmToPixels(xMM, yMM, scale = 1) {
+            const centerX = A4_CONFIG.centerX * scale;
+            const centerY = A4_CONFIG.centerY * scale;
+            const x = centerX + xMM * A4_CONFIG.pixelsPerMM * scale;
+            const y = centerY - yMM * A4_CONFIG.pixelsPerMM * scale;
+            return { x: Math.round(x), y: Math.round(y) };
+        }
+
+        // 全局变量
+        let uploadedImages = [];
+        let selectedIndex = -1;  // 当前选中的图片索引，-1表示未选中
+
+        // DOM元素
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+        const uploadCount = document.getElementById('uploadCount');
+        const previewCount = document.getElementById('previewCount');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const a4PreviewContainer = document.getElementById('a4PreviewContainer');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const controlsOverlay = document.getElementById('controlsOverlay');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        const outputCtx = outputCanvas.getContext('2d');
+
+        // 事件监听
+        uploadSection.addEventListener('click', () => fileInput.click());
+
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        clearBtn.addEventListener('click', clearImages);
+        downloadBtn.addEventListener('click', downloadImage);
+
+        // Canvas点击事件 - 选择图片
+        previewCanvas.addEventListener('click', handleCanvasClick);
+
+        // 处理上传的文件
+        function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+
+            if (imageFiles.length === 0) {
+                alert('请选择图片文件！');
+                return;
+            }
+
+            const remainingSlots = 11 - uploadedImages.length;
+            const filesToLoad = imageFiles.slice(0, remainingSlots);
+
+            let loadedCount = 0;
+
+            filesToLoad.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        uploadedImages.push({
+                            file: file,
+                            element: img,
+                            src: e.target.result,
+                            scale: 1.0,
+                            offsetX: 0,
+                            offsetY: 0
+                        });
+                        loadedCount++;
+
+                        uploadCount.textContent = uploadedImages.length;
+                        previewCount.textContent = uploadedImages.length;
+
+                        if (uploadedImages.length === 11) {
+                            downloadBtn.disabled = false;
+                        }
+
+                        renderPreview();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 渲染预览
+        function renderPreview() {
+            const previewWidth = Math.round(A4_CONFIG.width * PREVIEW_SCALE);
+            const previewHeight = Math.round(A4_CONFIG.height * PREVIEW_SCALE);
+
+            previewCanvas.width = previewWidth;
+            previewCanvas.height = previewHeight;
+
+            // 填充白色背景
+            previewCtx.fillStyle = '#FFFFFF';
+            previewCtx.fillRect(0, 0, previewWidth, previewHeight);
+
+            // 绘制所有已上传的图片
+            uploadedImages.forEach((imgData, index) => {
+                const pos = mmToPixels(POSITIONS_MM[index].x, POSITIONS_MM[index].y, PREVIEW_SCALE);
+                const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
+
+                // 绘制圆形背景
+                previewCtx.beginPath();
+                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.fillStyle = '#f0f0f0';
+                previewCtx.fill();
+                previewCtx.strokeStyle = '#ddd';
+                previewCtx.lineWidth = 1;
+                previewCtx.stroke();
+
+                // 绘制图片（圆形裁剪）
+                previewCtx.save();
+                previewCtx.beginPath();
+                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.clip();
+
+                const img = imgData.element;
+                const imgSize = Math.max(img.width, img.height);
+                const baseScale = (radius * 2.5) / imgSize;
+                const finalScale = baseScale * imgData.scale;
+                const scaledWidth = img.width * finalScale;
+                const scaledHeight = img.height * finalScale;
+
+                // 应用偏移量（转换为预览缩放比例）
+                const offsetX = imgData.offsetX * PREVIEW_SCALE;
+                const offsetY = imgData.offsetY * PREVIEW_SCALE;
+                const x = pos.x - scaledWidth / 2 + offsetX;
+                const y = pos.y - scaledHeight / 2 - offsetY;
+
+                previewCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                previewCtx.restore();
+            });
+
+            // 绘制圆形边框
+            POSITIONS_MM.forEach((posMM, index) => {
+                const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
+                const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
+                const isSelected = selectedIndex === index;
+
+                // 如果选中，绘制高亮边框
+                if (isSelected) {
+                    previewCtx.beginPath();
+                    previewCtx.arc(pos.x, pos.y, radius + 4, 0, Math.PI * 2);
+                    previewCtx.strokeStyle = '#667eea';
+                    previewCtx.lineWidth = 3;
+                    previewCtx.setLineDash([]);
+                    previewCtx.stroke();
+                }
+
+                // 绘制深色外轮廓线（最细）
+                previewCtx.beginPath();
+                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.strokeStyle = '#333';
+                previewCtx.lineWidth = 1;
+                previewCtx.setLineDash([]);
+                previewCtx.stroke();
+            });
+
+            // 更新控制按钮
+            updateControls();
+
+            // 显示预览
+            a4PreviewContainer.classList.add('show');
+        }
+
+        // 更新控制按钮
+        function updateControls() {
+            controlsOverlay.innerHTML = '';
+
+            const previewWidth = previewCanvas.width;
+            const previewHeight = previewCanvas.height;
+
+            // 更新overlay尺寸
+            controlsOverlay.style.width = previewWidth + 'px';
+            controlsOverlay.style.height = previewHeight + 'px';
+
+            POSITIONS_MM.forEach((posMM, index) => {
+                const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
+                const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
+
+                // 创建控制组
+                const controlGroup = document.createElement('div');
+                controlGroup.className = 'control-group';
+                controlGroup.style.left = pos.x + 'px';
+                controlGroup.style.top = pos.y + 'px';
+
+                const hasImage = uploadedImages[index] !== undefined;
+                const isSelected = selectedIndex === index;
+                const scaleValue = hasImage ? (uploadedImages[index].scale * 100).toFixed(0) + '%' : '-';
+
+                // 只显示缩放值，不显示控制按钮
+                controlGroup.innerHTML = `
+                    <div class="scale-badge">${scaleValue}</div>
+                    ${isSelected && hasImage ? `
+                    <div class="control-buttons">
+                        <div class="control-row">
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-up" title="上移">↑</button>
+                        </div>
+                        <div class="control-row center-row">
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-left" title="左移">←</button>
+                            <button class="control-btn" data-index="${index}" data-action="zoom-out" title="缩小">-</button>
+                            <button class="control-btn reset-btn" data-index="${index}" data-action="reset" title="复原">复原</button>
+                            <button class="control-btn" data-index="${index}" data-action="zoom-in" title="放大">+</button>
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-right" title="右移">→</button>
+                        </div>
+                        <div class="control-row">
+                            <button class="control-btn direction-btn" data-index="${index}" data-action="move-down" title="下移">↓</button>
+                        </div>
+                        <div class="control-row"><button class="control-btn delete-btn" data-index="${index}" data-action="delete" title="删除">🗑</button></div>
+                    </div>
+                    ` : ''}
+                `;
+
+                controlsOverlay.appendChild(controlGroup);
+            });
+
+            // 绑定按钮事件
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.addEventListener('click', handleControl);
+            });
+        }
+
+        // 处理Canvas点击 - 选择图片
+        function handleCanvasClick(e) {
+            const rect = previewCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // 检查点击是否在某个圆形内
+            let foundIndex = -1;
+            POSITIONS_MM.forEach((posMM, index) => {
+                const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
+                const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
+
+                const dx = clickX - pos.x;
+                const dy = clickY - pos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= radius) {
+                    foundIndex = index;
+                }
+            });
+
+            // 更新选中状态
+            if (foundIndex !== selectedIndex) {
+                selectedIndex = foundIndex;
+                renderPreview();
+            }
+        }
+
+        // 处理所有控制操作
+        function handleControl(e) {
+            e.stopPropagation();
+            const btn = e.target;
+            const index = parseInt(btn.dataset.index);
+            const action = btn.dataset.action;
+
+            // 删除操作
+            if (action === 'delete') {
+                if (confirm('确定要删除这张图片吗？')) {
+                    uploadedImages.splice(index, 1);
+                    uploadCount.textContent = uploadedImages.length;
+                    previewCount.textContent = uploadedImages.length;
+                    downloadBtn.disabled = uploadedImages.length !== 11;
+                    selectedIndex = -1;  // 删除后取消选中
+                    renderPreview();
+                }
+                return;
+            }
+
+            // 其他操作需要先上传图片
+            if (!uploadedImages[index]) {
+                alert('请先上传图片！');
+                return;
+            }
+
+            const imgData = uploadedImages[index];
+            const zoomStep = 0.1;
+            const moveStep = 10;  // 每次移动10像素
+
+            if (action === 'zoom-in') {
+                imgData.scale = Math.min(imgData.scale + zoomStep, 3.0);
+            } else if (action === 'zoom-out') {
+                imgData.scale = Math.max(imgData.scale - zoomStep, 0.3);
+            } else if (action === 'reset') {
+                imgData.scale = 1.0;
+                imgData.offsetX = 0;
+                imgData.offsetY = 0;
+            } else if (action === 'move-up') {
+                imgData.offsetY += moveStep;
+            } else if (action === 'move-down') {
+                imgData.offsetY -= moveStep;
+            } else if (action === 'move-left') {
+                imgData.offsetX -= moveStep;
+            } else if (action === 'move-right') {
+                imgData.offsetX += moveStep;
+            }
+
+            // 重新渲染预览
+            renderPreview();
+        }
+
+        // 清空图片
+        function clearImages() {
+            uploadedImages = [];
+            selectedIndex = -1;  // 清空时取消选中
+            uploadCount.textContent = '0';
+            previewCount.textContent = '0';
+            downloadBtn.disabled = true;
+            a4PreviewContainer.classList.remove('show');
+            fileInput.value = '';
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        }
+
+        // 生成高分辨率输出图像
+        function generateOutputImage() {
+            outputCanvas.width = A4_CONFIG.width;
+            outputCanvas.height = A4_CONFIG.height;
+
+            // 填充白色背景
+            outputCtx.fillStyle = '#FFFFFF';
+            outputCtx.fillRect(0, 0, A4_CONFIG.width, A4_CONFIG.height);
+
+            // 绘制所有图片
+            uploadedImages.forEach((imgData, index) => {
+                const pos = mmToPixels(POSITIONS_MM[index].x, POSITIONS_MM[index].y, 1);
+                const radius = IMAGE_CONFIG.radius;
+
+                // 创建圆形裁剪
+                outputCtx.save();
+                outputCtx.beginPath();
+                outputCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                outputCtx.clip();
+
+                const img = imgData.element;
+                const imgSize = Math.max(img.width, img.height);
+                const baseScale = (radius * 2.5) / imgSize;
+                const finalScale = baseScale * imgData.scale;
+                const scaledWidth = img.width * finalScale;
+                const scaledHeight = img.height * finalScale;
+
+                // 应用偏移量
+                const offsetX = imgData.offsetX;
+                const offsetY = imgData.offsetY;
+                const x = pos.x - scaledWidth / 2 + offsetX;
+                const y = pos.y - scaledHeight / 2 - offsetY;
+
+                outputCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                outputCtx.restore();
+            });
+
+            // 绘制所有圆形的深色轮廓线
+            POSITIONS_MM.forEach((posMM, index) => {
+                const pos = mmToPixels(posMM.x, posMM.y, 1);
+                const radius = IMAGE_CONFIG.radius;
+
+                outputCtx.beginPath();
+                outputCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                outputCtx.strokeStyle = '#333';
+                outputCtx.lineWidth = 1;
+                outputCtx.setLineDash([]);
+                outputCtx.stroke();
+            });
+
+            return outputCanvas.toDataURL('image/png');
+        }
+
+        // 下载图像
+        function downloadImage() {
+            if (uploadedImages.length !== 11) {
+                alert('请上传11张图片后再下载！');
+                return;
+            }
+
+            const dataURL = generateOutputImage();
+            const link = document.createElement('a');
+            link.download = 'A4合成图像_' + new Date().getTime() + '.png';
+            link.href = dataURL;
+            link.click();
+        }
+
+        // 打印配置信息
+        console.log('A4配置:', A4_CONFIG);
+        console.log('图像配置:', IMAGE_CONFIG);
+    </script>
+</body>
+</html>
