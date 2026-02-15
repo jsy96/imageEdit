@@ -296,6 +296,90 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* A4预览区域样式 */
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #previewCanvas {
+            display: block;
+            background: white;
+        }
+
+        #controlsOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .control-group {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+        }
+
+        .control-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .control-row.center-row {
+            justify-content: center;
+        }
+
+        .control-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(4px);
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+
+        .control-btn:hover {
+            background: rgba(102, 126, 234, 0.7);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .control-btn.delete-btn {
+            background: rgba(255, 100, 100, 0.4);
+            color: white;
+        }
+
+        .control-btn.delete-btn:hover {
+            background: rgba(255, 50, 50, 0.8);
+        }
+
+        .control-btn.reset-btn {
+            font-size: 10px;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -317,12 +401,22 @@
             </div>
         </div>
 
-        <!-- 预览区域 -->
+        <!-- A4预览区域 -->
+        <div class="preview-section" id="a4PreviewContainer">
+            <div class="preview-title">A4打印预览</div>
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="previewCanvas"></canvas>
+                <div id="controlsOverlay"></div>
+            </div>
+        </div>
+
+        <!-- 图片列表区域 -->
         <div class="preview-section" id="previewSection">
             <div class="preview-title">已选择图片 (<span id="imageCount">0</span>/11)</div>
             <div class="image-grid" id="imageGrid"></div>
 
             <div class="action-buttons">
+                <button class="btn btn-secondary" id="nextBtn">下一个</button>
                 <button class="btn btn-secondary" id="clearBtn">清空</button>
                 <button class="btn btn-primary" id="generateBtn" disabled>生成A4图像</button>
             </div>
@@ -414,17 +508,22 @@
         // DOM元素
         const uploadSection = document.getElementById('uploadSection');
         const fileInput = document.getElementById('fileInput');
-        const uploadCount = document.getElementById('uploadCount');
-        const previewCount = document.getElementById('previewCount');
+        const imageCount = document.getElementById('imageCount');
         const clearBtn = document.getElementById('clearBtn');
         const downloadBtn = document.getElementById('downloadBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const nextBtn = document.getElementById('nextBtn');
         const a4PreviewContainer = document.getElementById('a4PreviewContainer');
         const previewCanvas = document.getElementById('previewCanvas');
         const controlsOverlay = document.getElementById('controlsOverlay');
         const canvasWrapper = document.getElementById('canvasWrapper');
-        const outputCanvas = document.getElementById('outputCanvas');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const imageGrid = document.getElementById('imageGrid');
+        const previewSection = document.getElementById('previewSection');
+        const progressSection = document.getElementById('progressSection');
+        const resultSection = document.getElementById('resultSection');
+        const progressFill = document.getElementById('progressFill');
         const previewCtx = previewCanvas.getContext('2d');
-        const outputCtx = outputCanvas.getContext('2d');
 
         // 事件监听
         uploadSection.addEventListener('click', () => fileInput.click());
@@ -448,7 +547,10 @@
         });
 
         clearBtn.addEventListener('click', clearImages);
+        generateBtn.addEventListener('click', generateA4Image);
         downloadBtn.addEventListener('click', downloadImage);
+        nextBtn.addEventListener('click', selectNextImage);
+        previewCanvas.addEventListener('click', handleCanvasClick);
 
         // 处理上传的文件
         function handleFiles(files) {
@@ -479,19 +581,44 @@
                         });
                         loadedCount++;
 
-                        uploadCount.textContent = uploadedImages.length;
-                        previewCount.textContent = uploadedImages.length;
+                        imageCount.textContent = uploadedImages.length;
 
                         if (uploadedImages.length === 11) {
+                            generateBtn.disabled = false;
                             downloadBtn.disabled = false;
                         }
 
                         renderPreview();
+                        renderImageGrid();
                     };
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             });
+        }
+
+        // 渲染图片网格
+        function renderImageGrid() {
+            imageGrid.innerHTML = '';
+
+            uploadedImages.forEach((imgData, index) => {
+                const item = document.createElement('div');
+                item.className = 'image-item';
+
+                const img = document.createElement('img');
+                img.src = imgData.src;
+                item.appendChild(img);
+
+                const label = document.createElement('div');
+                label.className = 'image-label';
+                label.textContent = `#${index + 1}`;
+                item.appendChild(label);
+
+                imageGrid.appendChild(item);
+            });
+
+            // 显示预览区域
+            previewSection.classList.add('show');
         }
 
         // 更新预览
@@ -659,12 +786,54 @@
         function clearImages() {
             uploadedImages = [];
             selectedIndex = -1;  // 清空时取消选中
-            uploadCount.textContent = '0';
-            previewCount.textContent = '0';
+            imageCount.textContent = '0';
+            generateBtn.disabled = true;
             downloadBtn.disabled = true;
             a4PreviewContainer.classList.remove('show');
+            previewSection.classList.remove('show');
             fileInput.value = '';
+            imageGrid.innerHTML = '';
             previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        }
+
+        // 处理canvas点击
+        function handleCanvasClick(e) {
+            const rect = previewCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // 检查点击了哪个圆形
+            POSITIONS_MM.forEach((posMM, index) => {
+                if (index >= uploadedImages.length) return;
+
+                const pos = mmToPixels(posMM.x, posMM.y, 0.25); // 预览缩放比例
+                const radius = IMAGE_CONFIG.radius * 0.25;
+
+                const imgData = uploadedImages[index];
+                if (!imgData) return;
+
+                // 计算考虑图片偏移后的实际圆心位置
+                const actualX = pos.x + imgData.offsetX * 0.25;
+                const actualY = pos.y - imgData.offsetY * 0.25;
+
+                const distance = Math.sqrt((x - actualX) ** 2 + (y - actualY) ** 2);
+
+                if (distance <= radius) {
+                    selectedIndex = index;
+                    renderPreview();
+                }
+            });
+        }
+
+        // 选择下一个图片
+        function selectNextImage() {
+            if (uploadedImages.length === 0) {
+                alert('请先上传图片！');
+                return;
+            }
+
+            selectedIndex = (selectedIndex + 1) % uploadedImages.length;
+            renderPreview();
         }
 
         // 将图片裁剪为圆形并应用缩放和平移
@@ -712,6 +881,7 @@
 
             progressSection.classList.add('show');
             resultSection.classList.remove('show');
+            generateBtn.disabled = true;
             downloadBtn.disabled = true;
 
             // 设置结果canvas尺寸
@@ -723,9 +893,15 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, A4_CONFIG.width, A4_CONFIG.height);
 
+            // 更新进度
+            progressFill.textContent = '10%';
+            progressFill.style.width = '10%';
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // 绘制所有图片
-            uploadedImages.forEach((imgData, index) => {
-                const pos = POSITIONS_PX[index];
+            for (let i = 0; i < uploadedImages.length; i++) {
+                const imgData = uploadedImages[i];
+                const pos = POSITIONS_PX[i];
                 const radius = IMAGE_CONFIG.radius;
 
                 // 创建圆形裁剪
@@ -745,7 +921,12 @@
 
                 ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
                 ctx.restore();
-            });
+
+                // 更新进度
+                const progress = Math.round((i + 1) / uploadedImages.length * 80) + 10;
+                progressFill.textContent = progress + '%';
+                progressFill.style.width = progress + '%';
+            }
 
             // 绘制所有圆形的深色轮廓线
             POSITIONS_MM.forEach((posMM, index) => {
@@ -760,11 +941,16 @@
                 ctx.stroke();
             });
 
+            // 更新进度完成
+            progressFill.textContent = '100%';
+            progressFill.style.width = '100%';
+
             // 完成后显示结果
             await new Promise(resolve => setTimeout(resolve, 300));
 
             progressSection.classList.remove('show');
             resultSection.classList.add('show');
+            generateBtn.disabled = false;
             downloadBtn.disabled = false;
 
             // 滚动到结果区域
