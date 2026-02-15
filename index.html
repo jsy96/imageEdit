@@ -643,14 +643,35 @@
 
             // 绘制圆形边框
             POSITIONS_MM.forEach((posMM, index) => {
+                const imgData = uploadedImages[index];
+                if (!imgData) {
+                    // 没有图片的位置，只绘制基础轮廓
+                    const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
+                    const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
+
+                    previewCtx.beginPath();
+                    previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                    previewCtx.strokeStyle = '#333';
+                    previewCtx.lineWidth = 1;
+                    previewCtx.setLineDash([]);
+                    previewCtx.stroke();
+                    return;
+                }
+
+                // 有图片的位置，应用偏移量
+                const offsetX = imgData.offsetX * PREVIEW_SCALE;
+                const offsetY = imgData.offsetY * PREVIEW_SCALE;
                 const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
                 const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
                 const isSelected = selectedIndex === index;
 
-                // 如果选中，绘制高亮边框
+                const circleX = pos.x + offsetX;
+                const circleY = pos.y + offsetY;
+
+                // 如果选中，绘制高亮边框（使用移动后的圆心）
                 if (isSelected) {
                     previewCtx.beginPath();
-                    previewCtx.arc(pos.x, pos.y, radius + 4, 0, Math.PI * 2);
+                    previewCtx.arc(circleX, circleY, radius + 4, 0, Math.PI * 2);
                     previewCtx.strokeStyle = '#667eea';
                     previewCtx.lineWidth = 3;
                     previewCtx.setLineDash([]);
@@ -659,7 +680,7 @@
 
                 // 绘制深色外轮廓线（最细）
                 previewCtx.beginPath();
-                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
                 previewCtx.strokeStyle = '#333';
                 previewCtx.lineWidth = 1;
                 previewCtx.setLineDash([]);
