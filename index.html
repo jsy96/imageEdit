@@ -731,6 +731,7 @@
                     <div class="scale-badge">${scaleValue}</div>
                     ${isSelected && hasImage ? `
                     <div class="control-buttons">
+                        <button class="control-btn" data-index="${index}" data-action="next" title="下一个">▶</button>
                         <div class="control-row">
                             <button class="control-btn direction-btn" data-index="${index}" data-action="move-up" title="上移">↑</button>
                         </div>
@@ -804,6 +805,12 @@
             const index = parseInt(btn.dataset.index);
             const action = btn.dataset.action;
 
+            // 下一个按钮
+            if (action === 'next') {
+                selectNextImage(index);
+                return;
+            }
+
             // 删除操作
             if (action === 'delete') {
                 if (confirm('确定要删除这张图片吗？')) {
@@ -811,7 +818,13 @@
                     uploadCount.textContent = uploadedImages.length;
                     previewCount.textContent = uploadedImages.length;
                     downloadBtn.disabled = uploadedImages.length !== 11;
-                    selectedIndex = -1;  // 删除后取消选中
+
+                    // 如果删除的是当前选中，选择下一个
+                    if (selectedIndex === index) {
+                        selectNextImage(index);
+                    } else {
+                        selectedIndex = -1;
+                    }
                     renderPreview();
                 }
                 return;
@@ -847,6 +860,25 @@
 
             // 重新渲染预览
             renderPreview();
+        }
+
+        // 选择下一个图片（用于"下一个"按钮）
+        function selectNextImage(currentIndex) {
+            // 使用全局 selectedIndex 替代参数，避免变量名错误
+            currentIndex = selectedIndex;
+            // 找到下一个有图片的位置
+            let nextIndex = currentIndex + 1;
+            while (nextIndex < 11 && !uploadedImages[nextIndex]) {
+                nextIndex++;
+                if (nextIndex >= 11) {
+                    nextIndex = 0;  // 循环到第一个
+                }
+            }
+
+            if (nextIndex >= 0 && uploadedImages[nextIndex]) {
+                selectedIndex = nextIndex;
+                renderPreview();
+            }
         }
 
         // 清空图片
