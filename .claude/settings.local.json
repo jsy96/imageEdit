@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: A4图像编辑工具\n\n- 支持上传11张图片\n- A4纸预览 \\(300dpi\\)\n- 圆形裁剪和布局\n- 点击选中图片进行编辑\n- 缩放、平移、删除功能\n- 下载高分辨率输出\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
