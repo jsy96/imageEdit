@@ -329,11 +329,6 @@
                 <div class="upload-hint">支持 JPG、PNG、WEBP 格式</div>
                 <input type="file" id="fileInput" accept="image/*" multiple>
             </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-secondary" id="clearBtn">清空</button>
-                <button class="btn btn-primary" id="downloadBtn" disabled>📥 下载A4图像</button>
-            </div>
         </div>
 
         <!-- A4预览区域 -->
@@ -349,7 +344,7 @@
         <div class="action-buttons">
             <button class="btn btn-secondary" id="nextBtn">下一个</button>
             <button class="btn btn-secondary" id="clearBtn">清空</button>
-            <button class="btn btn-primary" id="generateBtn" disabled>生成A4图像</button>
+            <button class="btn btn-primary" id="downloadBtn" disabled>📥 下载A4图像</button>
         </div>
 
         <!-- 进度条 -->
@@ -441,7 +436,6 @@
         const imageCount = document.getElementById('imageCount');
         const clearBtn = document.getElementById('clearBtn');
         const downloadBtn = document.getElementById('downloadBtn');
-        const generateBtn = document.getElementById('generateBtn');
         const nextBtn = document.getElementById('nextBtn');
         const a4PreviewContainer = document.getElementById('a4PreviewContainer');
         const previewCanvas = document.getElementById('previewCanvas');
@@ -475,8 +469,7 @@
         });
 
         clearBtn.addEventListener('click', clearImages);
-        generateBtn.addEventListener('click', generateA4Image);
-        downloadBtn.addEventListener('click', downloadImage);
+        downloadBtn.addEventListener('click', generateAndDownloadA4Image);
         nextBtn.addEventListener('click', selectNextImage);
         previewCanvas.addEventListener('click', handleCanvasClick);
 
@@ -512,7 +505,6 @@
                         imageCount.textContent = uploadedImages.length;
 
                         if (uploadedImages.length === 11) {
-                            generateBtn.disabled = false;
                             downloadBtn.disabled = false;
                         }
 
@@ -730,7 +722,6 @@
             uploadedImages = [];
             selectedIndex = -1;  // 清空时取消选中
             imageCount.textContent = '0';
-            generateBtn.disabled = true;
             downloadBtn.disabled = true;
             a4PreviewContainer.classList.remove('show');
             fileInput.value = '';
@@ -757,6 +748,95 @@
                     renderPreview();
                 }
             });
+        }
+
+        // 生成并下载A4图像
+        async function generateAndDownloadA4Image() {
+            if (uploadedImages.length !== 11) {
+                alert('请上传11张图片！');
+                return;
+            }
+
+            progressSection.classList.add('show');
+            downloadBtn.disabled = true;
+
+            // 设置结果canvas尺寸
+            resultCanvas.width = A4_CONFIG.width;
+            resultCanvas.height = A4_CONFIG.height;
+            const ctx = resultCanvas.getContext('2d');
+
+            // 填充白色背景
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, A4_CONFIG.width, A4_CONFIG.height);
+
+            // 更新进度
+            progressFill.textContent = '10%';
+            progressFill.style.width = '10%';
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // 绘制所有图片
+            for (let i = 0; i < uploadedImages.length; i++) {
+                const imgData = uploadedImages[i];
+                const pos = POSITIONS_PX[i];
+                const radius = IMAGE_CONFIG.radius;
+
+                // 创建圆形裁剪（圆形位置固定）
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                ctx.clip();
+
+                const img = imgData.element;
+                const imgSize = Math.max(img.width, img.height);
+                const baseScale = (radius * 2.5) / imgSize;
+                const finalScale = baseScale * imgData.scale;
+                const scaledWidth = img.width * finalScale;
+                const scaledHeight = img.height * finalScale;
+
+                // 图片中心考虑偏移（但圆形裁剪位置不变）
+                const imgCenterX = pos.x + imgData.offsetX;
+                const imgCenterY = pos.y - imgData.offsetY;
+                const x = imgCenterX - scaledWidth / 2;
+                const y = imgCenterY - scaledHeight / 2;
+
+                ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                ctx.restore();
+
+                // 更新进度
+                const progress = Math.round((i + 1) / uploadedImages.length * 80) + 10;
+                progressFill.textContent = progress + '%';
+                progressFill.style.width = progress + '%';
+            }
+
+            // 绘制所有圆形的深色轮廓线
+            uploadedImages.forEach((imgData, index) => {
+                const posMM = POSITIONS_MM[index];
+                const pos = mmToPixels(posMM.x, posMM.y, 1);
+                const radius = IMAGE_CONFIG.radius;
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                ctx.stroke();
+            });
+
+            // 更新进度完成
+            progressFill.textContent = '100%';
+            progressFill.style.width = '100%';
+
+            // 完成后下载
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // 下载图像
+            const link = document.createElement('a');
+            link.download = 'A4合成图像_' + new Date().getTime() + '.png';
+            link.href = resultCanvas.toDataURL('image/png');
+            link.click();
+
+            progressSection.classList.remove('show');
+            downloadBtn.disabled = false;
         }
 
         // 选择下一个图片
