@@ -623,8 +623,9 @@
 
         // 更新预览
         function renderPreview() {
-            const previewWidth = Math.round(A4_CONFIG.width * 0.25);
-            const previewHeight = Math.round(A4_CONFIG.height * 0.25);
+            const previewScale = 0.25;
+            const previewWidth = Math.round(A4_CONFIG.width * previewScale);
+            const previewHeight = Math.round(A4_CONFIG.height * previewScale);
 
             previewCanvas.width = previewWidth;
             previewCanvas.height = previewHeight;
@@ -633,10 +634,10 @@
             previewCtx.fillStyle = '#FFFFFF';
             previewCtx.fillRect(0, 0, previewWidth, previewHeight);
 
-            // 绘制所有已上传的图片
-            uploadedImages.forEach((imgData, index) => {
-                const pos = POSITIONS_PX[index];
-                const radius = IMAGE_CONFIG.radius;
+            // 绘制所有圆形位置（包括空位置）
+            POSITIONS_MM.forEach((posMM, index) => {
+                const pos = mmToPixels(posMM.x, posMM.y, previewScale);
+                const radius = IMAGE_CONFIG.radius * previewScale;
 
                 // 绘制圆形背景
                 previewCtx.beginPath();
@@ -648,13 +649,57 @@
                 previewCtx.stroke();
             });
 
+            // 绘制已上传的图片
+            uploadedImages.forEach((imgData, index) => {
+                const posMM = POSITIONS_MM[index];
+                const pos = mmToPixels(posMM.x, posMM.y, previewScale);
+                const radius = IMAGE_CONFIG.radius * previewScale;
+
+                // 计算图片偏移后的圆心位置
+                const actualX = pos.x + imgData.offsetX * previewScale;
+                const actualY = pos.y - imgData.offsetY * previewScale;
+
+                // 绘制选中高亮
+                if (selectedIndex === index) {
+                    previewCtx.beginPath();
+                    previewCtx.arc(actualX, actualY, radius, 0, Math.PI * 2);
+                    previewCtx.strokeStyle = '#667eea';
+                    previewCtx.lineWidth = 3;
+                    previewCtx.stroke();
+                }
+
+                // 创建圆形裁剪
+                previewCtx.save();
+                previewCtx.beginPath();
+                previewCtx.arc(actualX, actualY, radius, 0, Math.PI * 2);
+                previewCtx.clip();
+
+                // 绘制图片
+                const img = imgData.element;
+                const imgSize = Math.max(img.width, img.height);
+                const baseScale = (radius * 2.5) / imgSize;
+                const finalScale = baseScale * imgData.scale;
+                const scaledWidth = img.width * finalScale;
+                const scaledHeight = img.height * finalScale;
+                const x = actualX - scaledWidth / 2;
+                const y = actualY - scaledHeight / 2;
+
+                previewCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                previewCtx.restore();
+            });
+
             // 绘制所有圆形的深色外轮廓线
             POSITIONS_MM.forEach((posMM, index) => {
-                const pos = mmToPixels(posMM.x, posMM.y, 1);
-                const radius = IMAGE_CONFIG.radius;
+                const pos = mmToPixels(posMM.x, posMM.y, previewScale);
+                const radius = IMAGE_CONFIG.radius * previewScale;
+
+                // 如果有图片且有偏移，轮廓线要跟随图片移动
+                const imgData = uploadedImages[index];
+                const outlineX = imgData ? pos.x + imgData.offsetX * previewScale : pos.x;
+                const outlineY = imgData ? pos.y - imgData.offsetY * previewScale : pos.y;
 
                 previewCtx.beginPath();
-                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.arc(outlineX, outlineY, radius, 0, Math.PI * 2);
                 previewCtx.strokeStyle = '#333';
                 previewCtx.lineWidth = 1;
                 previewCtx.setLineDash([]);
@@ -672,6 +717,7 @@
         function updateControls() {
             controlsOverlay.innerHTML = '';
 
+            const previewScale = 0.25;
             const previewWidth = previewCanvas.width;
             const previewHeight = previewCanvas.height;
 
@@ -680,20 +726,20 @@
             controlsOverlay.style.height = previewHeight + 'px';
 
             POSITIONS_MM.forEach((posMM, index) => {
-                const pos = mmToPixels(posMM.x, posMM.y, 1);
-                const radius = IMAGE_CONFIG.radius;
+                const pos = mmToPixels(posMM.x, posMM.y, previewScale);
+                const radius = IMAGE_CONFIG.radius * previewScale;
+
+                const imgData = uploadedImages[index];
+                const offsetX = imgData ? imgData.offsetX * previewScale : 0;
+                const offsetY = imgData ? imgData.offsetY * previewScale : 0;
+                const controlX = pos.x + offsetX;
+                const controlY = pos.y - offsetY;
 
                 // 创建控制组
                 const controlGroup = document.createElement('div');
                 controlGroup.className = 'control-group';
-                controlGroup.style.left = pos.x + 'px';
-                controlGroup.style.top = pos.y + 'px';
-
-                const imgData = uploadedImages[index];
-                const offsetX = imgData ? imgData.offsetX * 1 : 0;
-                const offsetY = imgData ? imgData.offsetY * 1 : 0;
-                const controlX = pos.x + offsetX;
-                const controlY = pos.y + offsetY;
+                controlGroup.style.left = controlX + 'px';
+                controlGroup.style.top = controlY + 'px';
 
                 const hasImage = imgData !== undefined;
                 const isSelected = selectedIndex === index;
