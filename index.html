@@ -558,51 +558,46 @@
                 const pos = mmToPixels(posMM.x, posMM.y, previewScale);
                 const radius = IMAGE_CONFIG.radius * previewScale;
 
-                // 计算图片偏移后的圆心位置
-                const actualX = pos.x + imgData.offsetX * previewScale;
-                const actualY = pos.y - imgData.offsetY * previewScale;
-
-                // 绘制选中高亮
+                // 绘制选中高亮（圆形位置固定）
                 if (selectedIndex === index) {
                     previewCtx.beginPath();
-                    previewCtx.arc(actualX, actualY, radius, 0, Math.PI * 2);
+                    previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
                     previewCtx.strokeStyle = '#667eea';
                     previewCtx.lineWidth = 3;
                     previewCtx.stroke();
                 }
 
-                // 创建圆形裁剪
+                // 创建圆形裁剪（圆形位置固定）
                 previewCtx.save();
                 previewCtx.beginPath();
-                previewCtx.arc(actualX, actualY, radius, 0, Math.PI * 2);
+                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
                 previewCtx.clip();
 
-                // 绘制图片
+                // 绘制图片（考虑偏移，但圆形裁剪位置不变）
                 const img = imgData.element;
                 const imgSize = Math.max(img.width, img.height);
                 const baseScale = (radius * 2.5) / imgSize;
                 const finalScale = baseScale * imgData.scale;
                 const scaledWidth = img.width * finalScale;
                 const scaledHeight = img.height * finalScale;
-                const x = actualX - scaledWidth / 2;
-                const y = actualY - scaledHeight / 2;
+
+                // 图片中心考虑偏移
+                const imgCenterX = pos.x + imgData.offsetX * previewScale;
+                const imgCenterY = pos.y - imgData.offsetY * previewScale;
+                const x = imgCenterX - scaledWidth / 2;
+                const y = imgCenterY - scaledHeight / 2;
 
                 previewCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
                 previewCtx.restore();
             });
 
-            // 绘制所有圆形的深色外轮廓线
+            // 绘制所有圆形的深色外轮廓线（位置固定）
             POSITIONS_MM.forEach((posMM, index) => {
                 const pos = mmToPixels(posMM.x, posMM.y, previewScale);
                 const radius = IMAGE_CONFIG.radius * previewScale;
 
-                // 如果有图片且有偏移，轮廓线要跟随图片移动
-                const imgData = uploadedImages[index];
-                const outlineX = imgData ? pos.x + imgData.offsetX * previewScale : pos.x;
-                const outlineY = imgData ? pos.y - imgData.offsetY * previewScale : pos.y;
-
                 previewCtx.beginPath();
-                previewCtx.arc(outlineX, outlineY, radius, 0, Math.PI * 2);
+                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
                 previewCtx.strokeStyle = '#333';
                 previewCtx.lineWidth = 1;
                 previewCtx.setLineDash([]);
@@ -632,11 +627,9 @@
                 const pos = mmToPixels(posMM.x, posMM.y, previewScale);
                 const radius = IMAGE_CONFIG.radius * previewScale;
 
-                const imgData = uploadedImages[index];
-                const offsetX = imgData ? imgData.offsetX * previewScale : 0;
-                const offsetY = imgData ? imgData.offsetY * previewScale : 0;
-                const controlX = pos.x + offsetX;
-                const controlY = pos.y - offsetY;
+                // 控制按钮固定在圆形位置，不跟随图片移动
+                const controlX = pos.x;
+                const controlY = pos.y;
 
                 // 创建控制组
                 const controlGroup = document.createElement('div');
@@ -644,6 +637,7 @@
                 controlGroup.style.left = controlX + 'px';
                 controlGroup.style.top = controlY + 'px';
 
+                const imgData = uploadedImages[index];
                 const hasImage = imgData !== undefined;
                 const isSelected = selectedIndex === index;
                 const scaleValue = hasImage ? (imgData.scale * 100).toFixed(0) + '%' : '-';
@@ -749,23 +743,16 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
 
-            // 检查点击了哪个圆形
+            const previewScale = 0.25;
+
+            // 检查点击了哪个圆形（基于固定位置）
             POSITIONS_MM.forEach((posMM, index) => {
-                if (index >= uploadedImages.length) return;
+                const pos = mmToPixels(posMM.x, posMM.y, previewScale);
+                const radius = IMAGE_CONFIG.radius * previewScale;
 
-                const pos = mmToPixels(posMM.x, posMM.y, 0.25); // 预览缩放比例
-                const radius = IMAGE_CONFIG.radius * 0.25;
+                const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
 
-                const imgData = uploadedImages[index];
-                if (!imgData) return;
-
-                // 计算考虑图片偏移后的实际圆心位置
-                const actualX = pos.x + imgData.offsetX * 0.25;
-                const actualY = pos.y - imgData.offsetY * 0.25;
-
-                const distance = Math.sqrt((x - actualX) ** 2 + (y - actualY) ** 2);
-
-                if (distance <= radius) {
+                if (distance <= radius && index < uploadedImages.length) {
                     selectedIndex = index;
                     renderPreview();
                 }
@@ -851,7 +838,7 @@
                 const pos = POSITIONS_PX[i];
                 const radius = IMAGE_CONFIG.radius;
 
-                // 创建圆形裁剪
+                // 创建圆形裁剪（圆形位置固定）
                 ctx.save();
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
@@ -863,8 +850,12 @@
                 const finalScale = baseScale * imgData.scale;
                 const scaledWidth = img.width * finalScale;
                 const scaledHeight = img.height * finalScale;
-                const x = pos.x - scaledWidth / 2;
-                const y = pos.y - scaledHeight / 2;
+
+                // 图片中心考虑偏移（但圆形裁剪位置不变）
+                const imgCenterX = pos.x + imgData.offsetX;
+                const imgCenterY = pos.y - imgData.offsetY;
+                const x = imgCenterX - scaledWidth / 2;
+                const y = imgCenterY - scaledHeight / 2;
 
                 ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
                 ctx.restore();
