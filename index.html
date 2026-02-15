@@ -607,9 +607,15 @@
                 const pos = mmToPixels(POSITIONS_MM[index].x, POSITIONS_MM[index].y, PREVIEW_SCALE);
                 const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
 
-                // 绘制圆形背景
+                // 应用偏移量（圆形区域也跟随移动）
+                const offsetX = imgData.offsetX * PREVIEW_SCALE;
+                const offsetY = imgData.offsetY * PREVIEW_SCALE;
+                const circleX = pos.x + offsetX;
+                const circleY = pos.y + offsetY;
+
+                // 绘制圆形背景（移动后的位置）
                 previewCtx.beginPath();
-                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
                 previewCtx.fillStyle = '#f0f0f0';
                 previewCtx.fill();
                 previewCtx.strokeStyle = '#ddd';
@@ -619,7 +625,7 @@
                 // 绘制图片（圆形裁剪）
                 previewCtx.save();
                 previewCtx.beginPath();
-                previewCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                previewCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
                 previewCtx.clip();
 
                 const img = imgData.element;
@@ -628,12 +634,8 @@
                 const finalScale = baseScale * imgData.scale;
                 const scaledWidth = img.width * finalScale;
                 const scaledHeight = img.height * finalScale;
-
-                // 应用偏移量（转换为预览缩放比例）
-                const offsetX = imgData.offsetX * PREVIEW_SCALE;
-                const offsetY = imgData.offsetY * PREVIEW_SCALE;
-                const x = pos.x - scaledWidth / 2 + offsetX;
-                const y = pos.y - scaledHeight / 2 - offsetY;
+                const x = circleX - scaledWidth / 2;
+                const y = circleY - scaledHeight / 2;
 
                 previewCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
                 previewCtx.restore();
@@ -686,15 +688,22 @@
                 const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
                 const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
 
+                // 应用该图片的偏移量（控制按钮跟随图片移动）
+                const imgData = uploadedImages[index];
+                const offsetX = imgData ? imgData.offsetX * PREVIEW_SCALE : 0;
+                const offsetY = imgData ? imgData.offsetY * PREVIEW_SCALE : 0;
+                const controlX = pos.x + offsetX;
+                const controlY = pos.y + offsetY;
+
                 // 创建控制组
                 const controlGroup = document.createElement('div');
                 controlGroup.className = 'control-group';
-                controlGroup.style.left = pos.x + 'px';
-                controlGroup.style.top = pos.y + 'px';
+                controlGroup.style.left = controlX + 'px';
+                controlGroup.style.top = controlY + 'px';
 
-                const hasImage = uploadedImages[index] !== undefined;
+                const hasImage = imgData !== undefined;
                 const isSelected = selectedIndex === index;
-                const scaleValue = hasImage ? (uploadedImages[index].scale * 100).toFixed(0) + '%' : '-';
+                const scaleValue = hasImage ? (imgData.scale * 100).toFixed(0) + '%' : '-';
 
                 // 只显示缩放值，不显示控制按钮
                 controlGroup.innerHTML = `
@@ -734,14 +743,25 @@
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            // 检查点击是否在某个圆形内
+            // 检查点击是否在某个圆形内（考虑图片偏移）
             let foundIndex = -1;
             POSITIONS_MM.forEach((posMM, index) => {
+                // 跳过没有图片的位置
+                if (!uploadedImages[index]) {
+                    return;
+                }
+
                 const pos = mmToPixels(posMM.x, posMM.y, PREVIEW_SCALE);
                 const radius = Math.round(IMAGE_CONFIG.radius * PREVIEW_SCALE);
 
-                const dx = clickX - pos.x;
-                const dy = clickY - pos.y;
+                // 应用该图片的偏移量
+                const offsetX = uploadedImages[index].offsetX * PREVIEW_SCALE;
+                const offsetY = uploadedImages[index].offsetY * PREVIEW_SCALE;
+                const circleX = pos.x + offsetX;
+                const circleY = pos.y + offsetY;
+
+                const dx = clickX - circleX;
+                const dy = clickY - circleY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance <= radius) {
@@ -834,10 +854,16 @@
                 const pos = mmToPixels(POSITIONS_MM[index].x, POSITIONS_MM[index].y, 1);
                 const radius = IMAGE_CONFIG.radius;
 
+                // 应用该图片的偏移量（圆形区域也跟随移动）
+                const offsetX = imgData.offsetX;
+                const offsetY = imgData.offsetY;
+                const circleX = pos.x + offsetX;
+                const circleY = pos.y + offsetY;
+
                 // 创建圆形裁剪
                 outputCtx.save();
                 outputCtx.beginPath();
-                outputCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                outputCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
                 outputCtx.clip();
 
                 const img = imgData.element;
@@ -846,12 +872,8 @@
                 const finalScale = baseScale * imgData.scale;
                 const scaledWidth = img.width * finalScale;
                 const scaledHeight = img.height * finalScale;
-
-                // 应用偏移量
-                const offsetX = imgData.offsetX;
-                const offsetY = imgData.offsetY;
-                const x = pos.x - scaledWidth / 2 + offsetX;
-                const y = pos.y - scaledHeight / 2 - offsetY;
+                const x = circleX - scaledWidth / 2;
+                const y = circleY - scaledHeight / 2;
 
                 outputCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
                 outputCtx.restore();
@@ -859,11 +881,18 @@
 
             // 绘制所有圆形的深色轮廓线
             POSITIONS_MM.forEach((posMM, index) => {
+                const imgData = uploadedImages[index];
                 const pos = mmToPixels(posMM.x, posMM.y, 1);
                 const radius = IMAGE_CONFIG.radius;
 
+                // 应用偏移量
+                const offsetX = imgData ? imgData.offsetX : 0;
+                const offsetY = imgData ? imgData.offsetY : 0;
+                const circleX = pos.x + offsetX;
+                const circleY = pos.y + offsetY;
+
                 outputCtx.beginPath();
-                outputCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                outputCtx.arc(circleX, circleY, radius, 0, Math.PI * 2);
                 outputCtx.strokeStyle = '#333';
                 outputCtx.lineWidth = 1;
                 outputCtx.setLineDash([]);
