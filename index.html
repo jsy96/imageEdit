@@ -285,6 +285,123 @@
         #outputCanvas {
             display: none;
         }
+        /* 响应式设计 - 手机端适配 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
+
+            .header-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .upload-section {
+                padding: 20px;
+                min-width: auto;
+            }
+
+            .upload-info {
+                font-size: 14px;
+            }
+
+            .action-buttons {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            .preview-header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+
+            .preview-title {
+                font-size: 16px;
+            }
+
+            #previewCanvas {
+                border-width: 1px;
+            }
+
+            .control-buttons {
+                padding: 4px;
+                border-radius: 12px;
+                max-width: 100%;
+            }
+
+            .control-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 14px;
+            }
+
+            .control-btn.reset-btn {
+                min-width: 36px;
+                padding: 0 8px;
+                font-size: 11px;
+            }
+
+            .control-btn.direction-btn {
+                font-size: 12px;
+            }
+
+            .scale-badge {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+
+            .control-row {
+                gap: 3px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 18px;
+            }
+
+            .upload-info {
+                font-size: 13px;
+            }
+
+            .btn {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .control-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+
+            .control-btn.reset-btn {
+                min-width: 32px;
+                padding: 0 6px;
+                font-size: 10px;
+            }
+
+            .control-btn.direction-btn {
+                font-size: 11px;
+            }
+
+            .scale-badge {
+                font-size: 9px;
+                padding: 2px 5px;
+            }
+        }
     </style>
 </head>
 <body>
